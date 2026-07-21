@@ -17,7 +17,7 @@ const CELL = 24;
 
 // Helper component to draw a 5-point star
 const Star = ({ cx, cy }: { cx: number; cy: number }) => {
-  const r = 10; // Radius of the star
+  const r = 10;
   const points = [
     `${cx},${cy - r}`,
     `${cx + r * 0.22},${cy - r * 0.3}`,
@@ -143,7 +143,7 @@ export default function LudoBoard({ size }: { size: number }) {
           height={5 * CELL}
           fill='#EA4335'
         />
-        {/* --- CENTER TRIANGLES --- */}
+        {/* --- CENTER TRIANGLES (Final Spot) --- */}
         <Polygon
           points={`${6 * CELL},${6 * CELL} ${180},${180} ${6 * CELL},${9 * CELL}`}
           fill='#34A853'
@@ -160,6 +160,39 @@ export default function LudoBoard({ size }: { size: number }) {
           points={`${6 * CELL},${9 * CELL} ${180},${180} ${9 * CELL},${9 * CELL}`}
           fill='#EA4335'
         />
+        {/* --- GRID LINES (Clipped to ONLY show on the cross arms, NOT the center) --- */}
+        <Defs>
+          <ClipPath id='crossArmsOnly'>
+            {/* Horizontal Arms (Left & Right of center) */}
+            <Rect x='0' y={6 * CELL} width={6 * CELL} height={3 * CELL} />
+            <Rect
+              x={9 * CELL}
+              y={6 * CELL}
+              width={6 * CELL}
+              height={3 * CELL}
+            />
+            {/* Vertical Arms (Top & Bottom of center) */}
+            <Rect x={6 * CELL} y='0' width={3 * CELL} height={6 * CELL} />
+            <Rect
+              x={6 * CELL}
+              y={9 * CELL}
+              width={3 * CELL}
+              height={6 * CELL}
+            />
+          </ClipPath>
+        </Defs>
+        <G
+          clipPath='url(#crossArmsOnly)'
+          stroke='rgba(0,0,0,0.1)'
+          strokeWidth='1'
+        >
+          {Array.from({ length: 16 }).map((_, i) => (
+            <Rect key={`v${i}`} x={i * CELL} y='0' width='1' height='360' />
+          ))}
+          {Array.from({ length: 16 }).map((_, i) => (
+            <Rect key={`h${i}`} x='0' y={i * CELL} width='360' height='1' />
+          ))}
+        </G>
         {/* --- HOME CIRCLES (White circles inside corners) --- */}
         <G fill='#FFFFFF' stroke='rgba(0,0,0,0.1)' strokeWidth='2'>
           {/* Green */}
@@ -184,31 +217,14 @@ export default function LudoBoard({ size }: { size: number }) {
           <Circle cx={4.5 * CELL} cy={13.5 * CELL} r={20} />
         </G>
         {/* --- SAFE SPOTS (Stars) --- */}
-        {/* 4 on the colored start squares */}
         <Star cx={1.5 * CELL} cy={6.5 * CELL} /> {/* Green Start */}
         <Star cx={8.5 * CELL} cy={1.5 * CELL} /> {/* Yellow Start */}
         <Star cx={13.5 * CELL} cy={8.5 * CELL} /> {/* Blue Start */}
         <Star cx={6.5 * CELL} cy={13.5 * CELL} /> {/* Red Start */}
-        {/* 4 on the white path (Exactly 8 steps after each start square) */}
         <Star cx={6.5 * CELL} cy={2.5 * CELL} /> {/* Top Arm */}
         <Star cx={12.5 * CELL} cy={6.5 * CELL} /> {/* Right Arm */}
         <Star cx={8.5 * CELL} cy={12.5 * CELL} /> {/* Bottom Arm */}
         <Star cx={2.5 * CELL} cy={8.5 * CELL} /> {/* Left Arm */}
-        {/* --- GRID LINES (Clipped to ONLY show on the white cross) --- */}
-        <Defs>
-          <ClipPath id='crossPath'>
-            <Rect x='0' y={6 * CELL} width={15 * CELL} height={3 * CELL} />
-            <Rect x={6 * CELL} y='0' width={3 * CELL} height={15 * CELL} />
-          </ClipPath>
-        </Defs>
-        <G clipPath='url(#crossPath)' stroke='rgba(0,0,0,0.1)' strokeWidth='1'>
-          {Array.from({ length: 16 }).map((_, i) => (
-            <Rect key={`v${i}`} x={i * CELL} y='0' width='1' height='360' />
-          ))}
-          {Array.from({ length: 16 }).map((_, i) => (
-            <Rect key={`h${i}`} x='0' y={i * CELL} width='360' height='1' />
-          ))}
-        </G>
       </Svg>
 
       {/* --- PAWNS OVERLAY --- */}
