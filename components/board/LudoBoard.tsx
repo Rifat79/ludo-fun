@@ -163,7 +163,6 @@ export default function LudoBoard({ size }: { size: number }) {
         {/* --- GRID LINES (Clipped to ONLY show on the cross arms, NOT the center) --- */}
         <Defs>
           <ClipPath id='crossArmsOnly'>
-            {/* Horizontal Arms (Left & Right of center) */}
             <Rect x='0' y={6 * CELL} width={6 * CELL} height={3 * CELL} />
             <Rect
               x={9 * CELL}
@@ -171,7 +170,6 @@ export default function LudoBoard({ size }: { size: number }) {
               width={6 * CELL}
               height={3 * CELL}
             />
-            {/* Vertical Arms (Top & Bottom of center) */}
             <Rect x={6 * CELL} y='0' width={3 * CELL} height={6 * CELL} />
             <Rect
               x={6 * CELL}
@@ -227,23 +225,81 @@ export default function LudoBoard({ size }: { size: number }) {
         <Star cx={2.5 * CELL} cy={8.5 * CELL} /> {/* Left Arm */}
       </Svg>
 
-      {/* --- PAWNS OVERLAY --- */}
-      {pawns.map((pawn, index) => {
-        const coords = getPawnCoords(pawn.color, pawn.position, index % 4);
-        const safeX = coords && coords.x ? coords.x * scale : 0;
-        const safeY = coords && coords.y ? coords.y * scale : 0;
+      {/* --- PAWNS OVERLAY (With Tight Huddle Offsets) --- */}
+      {(() => {
+        // 1. Group pawns by their exact coordinate to see if they are stacked
+        const coordMap: Record<string, number> = {};
+        pawns.forEach((pawn, index) => {
+          const coords = getPawnCoords(pawn.color, pawn.position, index % 4);
+          const key = `${coords.x},${coords.y}`;
+          coordMap[key] = (coordMap[key] || 0) + 1;
+        });
 
-        return (
-          <Pawn
-            key={pawn.id}
-            targetX={safeX}
-            targetY={safeY}
-            color={pawn.color}
-            highlight={movablePawns.includes(pawn.id)}
-            onPress={() => movePawn(pawn.id)}
-          />
-        );
-      })}
+        const renderIndexMap: Record<string, number> = {};
+
+        // 2. Map pawns and apply a tight offset if they are sharing a square
+        return pawns.map((pawn, index) => {
+          const coords = getPawnCoords(pawn.color, pawn.position, index % 4);
+          const key = `${coords.x},${coords.y}`;
+
+          renderIndexMap[key] = (renderIndexMap[key] || 0) + 1;
+          const stackIndex = renderIndexMap[key] - 1; // 0, 1, 2, 3
+
+          let offsetX = 0;
+          let offsetY = 0;
+          const stackCount = coordMap[key];
+
+          // If 2 or more pawns are on this square, huddle them tightly together
+          if (stackCount === 2) {
+            if (stackIndex === 0) {
+              offsetX = -4;
+              offsetY = 0;
+            } else {
+              offsetX = 4;
+              offsetY = 0;
+            }
+          } else if (stackCount === 3) {
+            if (stackIndex === 0) {
+              offsetX = 0;
+              offsetY = -4;
+            } else if (stackIndex === 1) {
+              offsetX = -4;
+              offsetY = 4;
+            } else {
+              offsetX = 4;
+              offsetY = 4;
+            }
+          } else if (stackCount >= 4) {
+            if (stackIndex === 0) {
+              offsetX = -4;
+              offsetY = -4;
+            } else if (stackIndex === 1) {
+              offsetX = 4;
+              offsetY = -4;
+            } else if (stackIndex === 2) {
+              offsetX = -4;
+              offsetY = 4;
+            } else {
+              offsetX = 4;
+              offsetY = 4;
+            }
+          }
+
+          const safeX = (coords.x + offsetX) * scale || 0;
+          const safeY = (coords.y + offsetY) * scale || 0;
+
+          return (
+            <Pawn
+              key={pawn.id}
+              targetX={safeX}
+              targetY={safeY}
+              color={pawn.color}
+              highlight={movablePawns.includes(pawn.id)}
+              onPress={() => movePawn(pawn.id)}
+            />
+          );
+        });
+      })()}
     </View>
   );
 }
