@@ -15,6 +15,25 @@ import Pawn from "../pawn/Pawn";
 const { width } = Dimensions.get("window");
 const CELL = 24;
 
+// Helper component to draw a 5-point star
+const Star = ({ cx, cy }: { cx: number; cy: number }) => {
+  const r = 10; // Radius of the star
+  const points = [
+    `${cx},${cy - r}`,
+    `${cx + r * 0.22},${cy - r * 0.3}`,
+    `${cx + r},${cy - r * 0.3}`,
+    `${cx + r * 0.37},${cy + r * 0.15}`,
+    `${cx + r * 0.6},${cy + r}`,
+    `${cx},${cy + r * 0.5}`,
+    `${cx - r * 0.6},${cy + r}`,
+    `${cx - r * 0.37},${cy + r * 0.15}`,
+    `${cx - r},${cy - r * 0.3}`,
+    `${cx - r * 0.22},${cy - r * 0.3}`,
+  ].join(" ");
+
+  return <Polygon points={points} fill='rgba(0,0,0,0.15)' />;
+};
+
 export default function LudoBoard({ size }: { size: number }) {
   const pawns = useGameStore((s) => s.pawns);
   const movablePawns = useGameStore((s) => s.movablePawns);
@@ -28,11 +47,8 @@ export default function LudoBoard({ size }: { size: number }) {
       <Svg width={safeSize} height={safeSize} viewBox='0 0 360 360'>
         {/* --- BASE BACKGROUND GRID --- */}
         <Rect x='0' y='0' width='360' height='360' fill='#f0f0f0' />
-
         {/* --- HOME AREAS (6x6 Corners) --- */}
-        {/* Green (Top-Left) */}
         <Rect x='0' y='0' width={6 * CELL} height={6 * CELL} fill='#34A853' />
-        {/* Yellow (Top-Right) */}
         <Rect
           x={9 * CELL}
           y='0'
@@ -40,7 +56,6 @@ export default function LudoBoard({ size }: { size: number }) {
           height={6 * CELL}
           fill='#F1C40F'
         />
-        {/* Blue (Bottom-Right) */}
         <Rect
           x={9 * CELL}
           y={9 * CELL}
@@ -48,7 +63,6 @@ export default function LudoBoard({ size }: { size: number }) {
           height={6 * CELL}
           fill='#4285F4'
         />
-        {/* Red (Bottom-Left) */}
         <Rect
           x='0'
           y={9 * CELL}
@@ -56,7 +70,6 @@ export default function LudoBoard({ size }: { size: number }) {
           height={6 * CELL}
           fill='#EA4335'
         />
-
         {/* --- MAIN PATHS (White Cross) --- */}
         <Rect
           x='0'
@@ -72,7 +85,6 @@ export default function LudoBoard({ size }: { size: number }) {
           height={15 * CELL}
           fill='#FFFFFF'
         />
-
         {/* --- COLORED START SQUARES ON PATH --- */}
         <Rect
           x={1 * CELL}
@@ -82,8 +94,8 @@ export default function LudoBoard({ size }: { size: number }) {
           fill='#34A853'
         />
         <Rect
-          x={7 * CELL}
-          y={0 * CELL}
+          x={8 * CELL}
+          y={1 * CELL}
           width={CELL}
           height={CELL}
           fill='#F1C40F'
@@ -96,13 +108,12 @@ export default function LudoBoard({ size }: { size: number }) {
           fill='#4285F4'
         />
         <Rect
-          x={7 * CELL}
-          y={14 * CELL}
+          x={6 * CELL}
+          y={13 * CELL}
           width={CELL}
           height={CELL}
           fill='#EA4335'
         />
-
         {/* --- COLORED HOME STRETCH PATHS --- */}
         <Rect
           x={1 * CELL}
@@ -132,7 +143,6 @@ export default function LudoBoard({ size }: { size: number }) {
           height={5 * CELL}
           fill='#EA4335'
         />
-
         {/* --- CENTER TRIANGLES --- */}
         <Polygon
           points={`${6 * CELL},${6 * CELL} ${180},${180} ${6 * CELL},${9 * CELL}`}
@@ -150,7 +160,6 @@ export default function LudoBoard({ size }: { size: number }) {
           points={`${6 * CELL},${9 * CELL} ${180},${180} ${9 * CELL},${9 * CELL}`}
           fill='#EA4335'
         />
-
         {/* --- HOME CIRCLES (White circles inside corners) --- */}
         <G fill='#FFFFFF' stroke='rgba(0,0,0,0.1)' strokeWidth='2'>
           {/* Green */}
@@ -174,23 +183,28 @@ export default function LudoBoard({ size }: { size: number }) {
           <Circle cx={1.5 * CELL} cy={13.5 * CELL} r={20} />
           <Circle cx={4.5 * CELL} cy={13.5 * CELL} r={20} />
         </G>
-
+        {/* --- SAFE SPOTS (Stars) --- */}
+        {/* 4 on the colored start squares */}
+        <Star cx={1.5 * CELL} cy={6.5 * CELL} /> {/* Green Start */}
+        <Star cx={8.5 * CELL} cy={1.5 * CELL} /> {/* Yellow Start */}
+        <Star cx={13.5 * CELL} cy={8.5 * CELL} /> {/* Blue Start */}
+        <Star cx={6.5 * CELL} cy={13.5 * CELL} /> {/* Red Start */}
+        {/* 4 on the white path (Exactly 8 steps after each start square) */}
+        <Star cx={6.5 * CELL} cy={2.5 * CELL} /> {/* Top Arm */}
+        <Star cx={12.5 * CELL} cy={6.5 * CELL} /> {/* Right Arm */}
+        <Star cx={8.5 * CELL} cy={12.5 * CELL} /> {/* Bottom Arm */}
+        <Star cx={2.5 * CELL} cy={8.5 * CELL} /> {/* Left Arm */}
         {/* --- GRID LINES (Clipped to ONLY show on the white cross) --- */}
         <Defs>
           <ClipPath id='crossPath'>
-            {/* Horizontal Path */}
             <Rect x='0' y={6 * CELL} width={15 * CELL} height={3 * CELL} />
-            {/* Vertical Path */}
             <Rect x={6 * CELL} y='0' width={3 * CELL} height={15 * CELL} />
           </ClipPath>
         </Defs>
-
         <G clipPath='url(#crossPath)' stroke='rgba(0,0,0,0.1)' strokeWidth='1'>
-          {/* Vertical lines */}
           {Array.from({ length: 16 }).map((_, i) => (
             <Rect key={`v${i}`} x={i * CELL} y='0' width='1' height='360' />
           ))}
-          {/* Horizontal lines */}
           {Array.from({ length: 16 }).map((_, i) => (
             <Rect key={`h${i}`} x='0' y={i * CELL} width='360' height='1' />
           ))}
