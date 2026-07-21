@@ -1,6 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useRef } from "react";
-import { Animated, Pressable, StyleSheet, View } from "react-native";
+import { Animated, Easing, Pressable, StyleSheet, View } from "react-native";
 
 const colorMap: Record<string, string> = {
   red: "#EA4335",
@@ -34,28 +34,47 @@ export default function Pawn({
   highlight = false,
   onPress,
 }: PawnProps) {
-  // Safeguard against undefined/NaN values on initial render
   const safeX = targetX || 0;
   const safeY = targetY || 0;
 
   const translateX = useRef(new Animated.Value(safeX)).current;
   const translateY = useRef(new Animated.Value(safeY)).current;
-  const bobAnim = useRef(new Animated.Value(0)).current;
+  const jumpAnim = useRef(new Animated.Value(0)).current; // For the hop
+  const bobAnim = useRef(new Animated.Value(0)).current; // For idle highlight
 
-  // Animate movement from square to square
+  // Animate movement and hop
   useEffect(() => {
-    Animated.spring(translateX, {
-      toValue: safeX,
-      friction: 5,
-      tension: 40,
-      useNativeDriver: false,
-    }).start();
-    Animated.spring(translateY, {
-      toValue: safeY,
-      friction: 5,
-      tension: 40,
-      useNativeDriver: false,
-    }).start();
+    // Parallel animation: Move X/Y while jumping up and down
+    Animated.parallel([
+      Animated.timing(translateX, {
+        toValue: safeX,
+        duration: 200,
+        easing: Easing.linear,
+        useNativeDriver: false,
+      }),
+      Animated.timing(translateY, {
+        toValue: safeY,
+        duration: 200,
+        easing: Easing.linear,
+        useNativeDriver: false,
+      }),
+      Animated.sequence([
+        // Jump Up
+        Animated.timing(jumpAnim, {
+          toValue: -12,
+          duration: 100,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: false,
+        }),
+        // Fall Down
+        Animated.timing(jumpAnim, {
+          toValue: 0,
+          duration: 100,
+          easing: Easing.in(Easing.quad),
+          useNativeDriver: false,
+        }),
+      ]),
+    ]).start();
   }, [safeX, safeY]);
 
   // Animate bobbing when it's movable
@@ -94,7 +113,11 @@ export default function Pawn({
       }}
     >
       <Pressable onPress={onPress} style={styles.hitbox}>
-        <Animated.View style={{ transform: [{ translateY: bobAnim }] }}>
+        <Animated.View
+          style={{
+            transform: [{ translateY: Animated.add(jumpAnim, bobAnim) }],
+          }}
+        >
           <View style={styles.pawnContainer}>
             {highlight && (
               <View style={[styles.glow, { backgroundColor: hexColor }]} />

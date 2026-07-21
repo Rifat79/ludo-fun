@@ -22,6 +22,7 @@ interface GameState {
   currentPlayerIndex: number;
   dice: number;
   isRolling: boolean;
+  isMoving: boolean; // Added to prevent clicking while animating
   movablePawns: string[];
   message: string;
 
@@ -35,34 +36,31 @@ export const useGameStore = create<GameState>((set, get) => ({
   currentPlayerIndex: 0, // 0 = Red, 1 = Green, 2 = Yellow, 3 = Blue
   dice: 0,
   isRolling: false,
+  isMoving: false,
   movablePawns: [],
   message: "Red's Turn",
 
   rollDice: () => {
-    const { isRolling, currentPlayerIndex, pawns } = get();
-    if (isRolling) return;
+    const { isRolling, isMoving, currentPlayerIndex, pawns } = get();
+    if (isRolling || isMoving) return;
 
     set({ isRolling: true, movablePawns: [], message: "Rolling..." });
 
-    // Simulate dice roll animation time
     setTimeout(() => {
       const newDice = Math.floor(Math.random() * 6) + 1;
       const currentColor = COLORS[currentPlayerIndex];
 
-      // Find which pawns can legally move
       const movable = pawns
         .filter((p) => p.color === currentColor)
         .filter((p) => {
-          if (p.position === 58) return false; // Already finished
-          if (p.position === -1) return newDice === 6; // Need a 6 to leave base
-          // Check if move exceeds the home stretch (57)
+          if (p.position === 58) return false;
+          if (p.position === -1) return newDice === 6;
           if (p.position >= 52 && p.position + newDice > 57) return false;
           return true;
         })
         .map((p) => p.id);
 
       if (movable.length === 0) {
-        // No moves available, skip turn
         set({
           dice: newDice,
           isRolling: false,
@@ -73,12 +71,11 @@ export const useGameStore = create<GameState>((set, get) => ({
           set({ message: `${COLORS[get().currentPlayerIndex]}'s Turn` });
         }, 1500);
       } else {
-        // Moves available
         set({
           dice: newDice,
           isRolling: false,
           movablePawns: movable,
-          message: `Select a pawn to move ${newDice}!`,
+          message: `Select a pawn to move ${newDice} steps!`,
         });
       }
     }, 600);
@@ -88,36 +85,61 @@ export const useGameStore = create<GameState>((set, get) => ({
     const { pawns, dice, currentPlayerIndex, movablePawns } = get();
     if (!movablePawns.includes(pawnId)) return;
 
-    let extraTurn = false;
-    const newPawns = pawns.map((p) => {
-      if (p.id === pawnId) {
-        let newPosition = p.position;
-        if (newPosition === -1) {
-          newPosition = 0; // Move out of base
-        } else {
-          newPosition += dice;
-        }
+    // Lock movement immediately
+    set({ movablePawns: [], isMoving: true, message: "Moving..." });
 
-        if (dice === 6) extraTurn = true; // Roll again on 6
-        if (newPosition === 57) extraTurn = true; // Roll again on reaching home
+    const pawnIndex = pawns.findIndex((p) => p.id === pawnId);
+    let stepsLeft = dice;
 
-        return { ...p, position: newPosition };
+    // Recursive function to move 1 step at a time
+    const performStep = () => {
+      const currentPawns = get().pawns;
+      const currentPawn = currentPawns[pawnIndex];
+
+      let newPosition = currentPawn.position;
+
+      if (currentPawn.position === -1) {
+        // Leaving base
+        newPosition = 0;
+        stepsLeft = 0; // Entering the board consumes the whole turn
+      } else if (currentPawn.position < 57) {
+        // Moving on board
+        newPosition = currentPawn.position + 1;
+        stepsLeft--;
+      } else {
+        stepsLeft = 0;
       }
-      return p;
-    });
 
-    // TODO: Add capture logic here later (if landing on opponent)
+      // Update state for this single step
+      const newPawns = [...currentPawns];
+      newPawns[pawnIndex] = { ...currentPawn, position: newPosition };
+      set({ pawns: newPawns });
 
-    const nextPlayer = extraTurn
-      ? currentPlayerIndex
-      : (currentPlayerIndex + 1) % 4;
+      if (stepsLeft > 0) {
+        // Wait 200ms, then do the next step
+        setTimeout(performStep, 200);
+      } else {
+        // Finished moving
+        let extraTurn = false;
+        if (dice === 6) extraTurn = true; // 6 gives extra turn
+        if (newPosition === 57) extraTurn = true; // Reaching home gives extra turn
 
-    set({
-      pawns: newPawns,
-      movablePawns: [],
-      currentPlayerIndex: nextPlayer,
-      message: `${COLORS[nextPlayer]}'s Turn`,
-    });
+        // TODO: Add capture logic here later
+
+        const nextPlayer = extraTurn
+          ? currentPlayerIndex
+          : (currentPlayerIndex + 1) % 4;
+
+        set({
+          isMoving: false,
+          currentPlayerIndex: nextPlayer,
+          message: `${COLORS[nextPlayer]}'s Turn`,
+        });
+      }
+    };
+
+    // Start the first step
+    performStep();
   },
 
   resetGame: () => {
@@ -126,6 +148,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       currentPlayerIndex: 0,
       dice: 0,
       isRolling: false,
+      isMoving: false,
       movablePawns: [],
       message: "Red's Turn",
     });
