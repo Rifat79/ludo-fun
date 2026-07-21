@@ -1,39 +1,36 @@
-import { Rect } from "react-native-svg";
+import { G, Rect } from "react-native-svg";
 
 const CELL = 24;
 
 export default function HomeAreas() {
   return (
-    <>
-      {/* Red */}
-      <Rect x={0} y={0} width={CELL * 6} height={CELL * 6} fill='#e74c3c' />
-
-      {/* Green */}
+    <G>
+      {/* Green (Top-Left) */}
+      <Rect x={0} y={0} width={6 * CELL} height={6 * CELL} fill='#34A853' />
+      {/* Yellow (Top-Right) */}
       <Rect
-        x={CELL * 9}
+        x={9 * CELL}
         y={0}
-        width={CELL * 6}
-        height={CELL * 6}
-        fill='#2ecc71'
+        width={6 * CELL}
+        height={6 * CELL}
+        fill='#F1C40F'
       />
-
-      {/* Yellow */}
+      {/* Blue (Bottom-Right) */}
+      <Rect
+        x={9 * CELL}
+        y={9 * CELL}
+        width={6 * CELL}
+        height={6 * CELL}
+        fill='#4285F4'
+      />
+      {/* Red (Bottom-Left) */}
       <Rect
         x={0}
-        y={CELL * 9}
-        width={CELL * 6}
-        height={CELL * 6}
-        fill='#f1c40f'
+        y={9 * CELL}
+        width={6 * CELL}
+        height={6 * CELL}
+        fill='#EA4335'
       />
-
-      {/* Blue */}
-      <Rect
-        x={CELL * 9}
-        y={CELL * 9}
-        width={CELL * 6}
-        height={CELL * 6}
-        fill='#3498db'
-      />
-    </>
+    </G>
   );
 }

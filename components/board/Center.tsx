@@ -1,34 +1,31 @@
-import { Polygon } from "react-native-svg";
+import { G, Polygon } from "react-native-svg";
 
 const CELL = 24;
-const CENTER = CELL * 7.5; // 180
+const C = 7.5 * CELL; // Center point (180)
 
 export default function Center() {
   return (
-    <>
-      {/* Red */}
+    <G>
+      {/* Green Triangle (Left) */}
       <Polygon
-        points={`${CENTER},${CENTER} ${CELL * 6},${CELL * 6} ${CELL * 9},${CELL * 6}`}
-        fill='#e74c3c'
+        points={`${6 * CELL},${6 * CELL} ${C},${C} ${6 * CELL},${9 * CELL}`}
+        fill='#34A853'
       />
-
-      {/* Green */}
+      {/* Yellow Triangle (Top) */}
       <Polygon
-        points={`${CENTER},${CENTER} ${CELL * 9},${CELL * 6} ${CELL * 9},${CELL * 9}`}
-        fill='#2ecc71'
+        points={`${6 * CELL},${6 * CELL} ${C},${C} ${9 * CELL},${6 * CELL}`}
+        fill='#F1C40F'
       />
-
-      {/* Blue */}
+      {/* Blue Triangle (Right) */}
       <Polygon
-        points={`${CENTER},${CENTER} ${CELL * 9},${CELL * 9} ${CELL * 6},${CELL * 9}`}
-        fill='#3498db'
+        points={`${9 * CELL},${6 * CELL} ${C},${C} ${9 * CELL},${9 * CELL}`}
+        fill='#4285F4'
       />
-
-      {/* Yellow */}
+      {/* Red Triangle (Bottom) */}
       <Polygon
-        points={`${CENTER},${CENTER} ${CELL * 6},${CELL * 9} ${CELL * 6},${CELL * 6}`}
-        fill='#f1c40f'
+        points={`${6 * CELL},${9 * CELL} ${C},${C} ${9 * CELL},${9 * CELL}`}
+        fill='#EA4335'
       />
-    </>
+    </G>
   );
 }

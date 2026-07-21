@@ -1,33 +1,33 @@
-import Pawn from "../pawn/Pawn";
+import { Circle, G } from "react-native-svg";
 
 const CELL = 24;
 
 export default function HomeCircles() {
   return (
-    <>
-      {/* Red */}
-      <Pawn x={CELL * 2} y={CELL * 2} color='#e74c3c' />
-      <Pawn x={CELL * 4} y={CELL * 2} color='#e74c3c' />
-      <Pawn x={CELL * 2} y={CELL * 4} color='#e74c3c' />
-      <Pawn x={CELL * 4} y={CELL * 4} color='#e74c3c' />
+    <G>
+      {/* Green (Top-Left) */}
+      <Circle cx={1.5 * CELL} cy={1.5 * CELL} r={20} fill='white' />
+      <Circle cx={4.5 * CELL} cy={1.5 * CELL} r={20} fill='white' />
+      <Circle cx={1.5 * CELL} cy={4.5 * CELL} r={20} fill='white' />
+      <Circle cx={4.5 * CELL} cy={4.5 * CELL} r={20} fill='white' />
 
-      {/* Green */}
-      <Pawn x={CELL * 11} y={CELL * 2} color='#2ecc71' />
-      <Pawn x={CELL * 13} y={CELL * 2} color='#2ecc71' />
-      <Pawn x={CELL * 11} y={CELL * 4} color='#2ecc71' />
-      <Pawn x={CELL * 13} y={CELL * 4} color='#2ecc71' />
+      {/* Yellow (Top-Right) */}
+      <Circle cx={10.5 * CELL} cy={1.5 * CELL} r={20} fill='white' />
+      <Circle cx={13.5 * CELL} cy={1.5 * CELL} r={20} fill='white' />
+      <Circle cx={10.5 * CELL} cy={4.5 * CELL} r={20} fill='white' />
+      <Circle cx={13.5 * CELL} cy={4.5 * CELL} r={20} fill='white' />
 
-      {/* Yellow */}
-      <Pawn x={CELL * 2} y={CELL * 11} color='#f1c40f' />
-      <Pawn x={CELL * 4} y={CELL * 11} color='#f1c40f' />
-      <Pawn x={CELL * 2} y={CELL * 13} color='#f1c40f' />
-      <Pawn x={CELL * 4} y={CELL * 13} color='#f1c40f' />
+      {/* Blue (Bottom-Right) */}
+      <Circle cx={10.5 * CELL} cy={10.5 * CELL} r={20} fill='white' />
+      <Circle cx={13.5 * CELL} cy={10.5 * CELL} r={20} fill='white' />
+      <Circle cx={10.5 * CELL} cy={13.5 * CELL} r={20} fill='white' />
+      <Circle cx={13.5 * CELL} cy={13.5 * CELL} r={20} fill='white' />
 
-      {/* Blue */}
-      <Pawn x={CELL * 11} y={CELL * 11} color='#3498db' />
-      <Pawn x={CELL * 13} y={CELL * 11} color='#3498db' />
-      <Pawn x={CELL * 11} y={CELL * 13} color='#3498db' />
-      <Pawn x={CELL * 13} y={CELL * 13} color='#3498db' />
-    </>
+      {/* Red (Bottom-Left) */}
+      <Circle cx={1.5 * CELL} cy={10.5 * CELL} r={20} fill='white' />
+      <Circle cx={4.5 * CELL} cy={10.5 * CELL} r={20} fill='white' />
+      <Circle cx={1.5 * CELL} cy={13.5 * CELL} r={20} fill='white' />
+      <Circle cx={4.5 * CELL} cy={13.5 * CELL} r={20} fill='white' />
+    </G>
   );
 }
