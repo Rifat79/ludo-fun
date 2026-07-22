@@ -15,7 +15,6 @@ import Pawn from "../pawn/Pawn";
 const { width } = Dimensions.get("window");
 const CELL = 24;
 
-// Helper component to draw a 5-point star
 const Star = ({ cx, cy }: { cx: number; cy: number }) => {
   const r = 10;
   const points = [
@@ -30,7 +29,6 @@ const Star = ({ cx, cy }: { cx: number; cy: number }) => {
     `${cx - r},${cy - r * 0.3}`,
     `${cx - r * 0.22},${cy - r * 0.3}`,
   ].join(" ");
-
   return <Polygon points={points} fill='rgba(0,0,0,0.15)' />;
 };
 
@@ -45,14 +43,12 @@ export default function LudoBoard({ size }: { size: number }) {
 
   return (
     <View style={{ width: safeSize, height: safeSize }}>
-      {/* Added pointerEvents="none" so the SVG never blocks pawn clicks */}
       <Svg
         width={safeSize}
         height={safeSize}
         viewBox='0 0 360 360'
         pointerEvents='none'
       >
-        {/* ... (All your SVG drawing code remains exactly the same) ... */}
         <Rect x='0' y='0' width='360' height='360' fill='#f0f0f0' />
         <Rect x='0' y='0' width={6 * CELL} height={6 * CELL} fill='#34A853' />
         <Rect
@@ -90,8 +86,9 @@ export default function LudoBoard({ size }: { size: number }) {
           height={15 * CELL}
           fill='#FFFFFF'
         />
+        {/* Corrected Start Squares */}
         <Rect
-          x={1 * CELL}
+          x={0 * CELL}
           y={6 * CELL}
           width={CELL}
           height={CELL}
@@ -99,13 +96,13 @@ export default function LudoBoard({ size }: { size: number }) {
         />
         <Rect
           x={8 * CELL}
-          y={1 * CELL}
+          y={0 * CELL}
           width={CELL}
           height={CELL}
           fill='#F1C40F'
         />
         <Rect
-          x={13 * CELL}
+          x={14 * CELL}
           y={8 * CELL}
           width={CELL}
           height={CELL}
@@ -113,7 +110,7 @@ export default function LudoBoard({ size }: { size: number }) {
         />
         <Rect
           x={6 * CELL}
-          y={13 * CELL}
+          y={14 * CELL}
           width={CELL}
           height={CELL}
           fill='#EA4335'
@@ -162,7 +159,6 @@ export default function LudoBoard({ size }: { size: number }) {
           points={`${6 * CELL},${9 * CELL} ${180},${180} ${9 * CELL},${9 * CELL}`}
           fill='#EA4335'
         />
-
         <Defs>
           <ClipPath id='crossArmsOnly'>
             <Rect x='0' y={6 * CELL} width={6 * CELL} height={3 * CELL} />
@@ -181,7 +177,6 @@ export default function LudoBoard({ size }: { size: number }) {
             />
           </ClipPath>
         </Defs>
-
         <G
           clipPath='url(#crossArmsOnly)'
           stroke='rgba(0,0,0,0.1)'
@@ -194,7 +189,6 @@ export default function LudoBoard({ size }: { size: number }) {
             <Rect key={`h${i}`} x='0' y={i * CELL} width='360' height='1' />
           ))}
         </G>
-
         <G fill='#FFFFFF' stroke='rgba(0,0,0,0.1)' strokeWidth='2'>
           <Circle cx={1.5 * CELL} cy={1.5 * CELL} r={20} />
           <Circle cx={4.5 * CELL} cy={1.5 * CELL} r={20} />
@@ -213,18 +207,20 @@ export default function LudoBoard({ size }: { size: number }) {
           <Circle cx={1.5 * CELL} cy={13.5 * CELL} r={20} />
           <Circle cx={4.5 * CELL} cy={13.5 * CELL} r={20} />
         </G>
-
-        <Star cx={1.5 * CELL} cy={6.5 * CELL} />
-        <Star cx={8.5 * CELL} cy={1.5 * CELL} />
-        <Star cx={13.5 * CELL} cy={8.5 * CELL} />
-        <Star cx={6.5 * CELL} cy={13.5 * CELL} />
-        <Star cx={6.5 * CELL} cy={2.5 * CELL} />
-        <Star cx={12.5 * CELL} cy={6.5 * CELL} />
-        <Star cx={8.5 * CELL} cy={12.5 * CELL} />
-        <Star cx={2.5 * CELL} cy={8.5 * CELL} />
+        {/* Corrected Safe Stars */}
+        <Star cx={0.5 * CELL} cy={6.5 * CELL} /> {/* Green Start */}
+        <Star cx={8.5 * CELL} cy={0.5 * CELL} /> {/* Yellow Start */}
+        <Star cx={14.5 * CELL} cy={8.5 * CELL} /> {/* Blue Start */}
+        <Star cx={6.5 * CELL} cy={14.5 * CELL} /> {/* Red Start */}
+        <Star cx={6.5 * CELL} cy={9.5 * CELL} />{" "}
+        {/* 8 steps before Green home */}
+        <Star cx={5.5 * CELL} cy={6.5 * CELL} />{" "}
+        {/* 8 steps before Yellow home */}
+        <Star cx={8.5 * CELL} cy={5.5 * CELL} />{" "}
+        {/* 8 steps before Blue home */}
+        <Star cx={9.5 * CELL} cy={8.5 * CELL} /> {/* 8 steps before Red home */}
       </Svg>
 
-      {/* --- PAWNS OVERLAY --- */}
       {(() => {
         const coordMap: Record<string, number> = {};
         pawns.forEach((pawn, index) => {
@@ -291,7 +287,7 @@ export default function LudoBoard({ size }: { size: number }) {
               targetY={safeY}
               color={pawn.color}
               highlight={movablePawns.includes(pawn.id)}
-              isCaptured={pawn.id === capturedPawnId} // ADD THIS
+              isCaptured={pawn.id === capturedPawnId}
               onPress={() => movePawn(pawn.id)}
             />
           );

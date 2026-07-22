@@ -234,20 +234,18 @@ export const useGameStore = create<GameState>((set, get) => ({
 
         if (newPosition < 52 && !SAFE_SQUARES.includes(newPosition)) {
           const startIdxMap: Record<PlayerColor, number> = {
-            red: 39,
-            green: 0,
-            yellow: 13,
-            blue: 26,
+            red: 38,
+            green: 51,
+            yellow: 12,
+            blue: 25,
           };
-          const myAbsolutePos =
-            (startIdxMap[movingPawnColor] + newPosition) % 52;
+          const myAbsolutePos = (startIdxMap[currentColor] + newPosition) % 52;
 
           const capturedPawns = newPawns.map((p) => {
-            // In team mode, you CANNOT capture your own teammate
             const isTeammate =
-              mode === "team" && p.color === TEAMS[movingPawnColor];
+              mode === "team" && p.color === TEAMS[currentColor];
             if (
-              p.color !== movingPawnColor &&
+              p.color !== currentColor &&
               !isTeammate &&
               p.position >= 0 &&
               p.position < 52
