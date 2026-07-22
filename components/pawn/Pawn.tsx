@@ -24,6 +24,7 @@ interface PawnProps {
   targetY: number;
   color: string;
   highlight?: boolean;
+  isCaptured?: boolean;
   onPress?: () => void;
 }
 
@@ -32,6 +33,7 @@ export default function Pawn({
   targetY = 0,
   color,
   highlight = false,
+  isCaptured = false,
   onPress,
 }: PawnProps) {
   const safeX = targetX || 0;
@@ -39,45 +41,74 @@ export default function Pawn({
 
   const translateX = useRef(new Animated.Value(safeX)).current;
   const translateY = useRef(new Animated.Value(safeY)).current;
-  const jumpAnim = useRef(new Animated.Value(0)).current; // For the hop
-  const bobAnim = useRef(new Animated.Value(0)).current; // For idle highlight
+  const jumpAnim = useRef(new Animated.Value(0)).current;
+  const bobAnim = useRef(new Animated.Value(0)).current;
 
-  // Animate movement and hop
+  // Animation for moving and being captured
   useEffect(() => {
-    // Parallel animation: Move X/Y while jumping up and down
-    Animated.parallel([
-      Animated.timing(translateX, {
-        toValue: safeX,
-        duration: 200,
-        easing: Easing.linear,
-        useNativeDriver: false,
-      }),
-      Animated.timing(translateY, {
-        toValue: safeY,
-        duration: 200,
-        easing: Easing.linear,
-        useNativeDriver: false,
-      }),
-      Animated.sequence([
-        // Jump Up
-        Animated.timing(jumpAnim, {
-          toValue: -12,
-          duration: 100,
-          easing: Easing.out(Easing.quad),
+    if (isCaptured) {
+      // CAPTURE ANIMATION: Long duration, high arc
+      Animated.parallel([
+        Animated.timing(translateX, {
+          toValue: safeX,
+          duration: 800,
+          easing: Easing.ease,
           useNativeDriver: false,
         }),
-        // Fall Down
-        Animated.timing(jumpAnim, {
-          toValue: 0,
-          duration: 100,
-          easing: Easing.in(Easing.quad),
+        Animated.timing(translateY, {
+          toValue: safeY,
+          duration: 800,
+          easing: Easing.ease,
           useNativeDriver: false,
         }),
-      ]),
-    ]).start();
-  }, [safeX, safeY]);
+        Animated.sequence([
+          Animated.timing(jumpAnim, {
+            toValue: -60, // Flies high up!
+            duration: 400,
+            easing: Easing.out(Easing.quad),
+            useNativeDriver: false,
+          }),
+          Animated.timing(jumpAnim, {
+            toValue: 0,
+            duration: 400,
+            easing: Easing.in(Easing.quad),
+            useNativeDriver: false,
+          }),
+        ]),
+      ]).start();
+    } else {
+      // NORMAL STEP ANIMATION
+      Animated.parallel([
+        Animated.timing(translateX, {
+          toValue: safeX,
+          duration: 200,
+          easing: Easing.linear,
+          useNativeDriver: false,
+        }),
+        Animated.timing(translateY, {
+          toValue: safeY,
+          duration: 200,
+          easing: Easing.linear,
+          useNativeDriver: false,
+        }),
+        Animated.sequence([
+          Animated.timing(jumpAnim, {
+            toValue: -12,
+            duration: 100,
+            easing: Easing.out(Easing.quad),
+            useNativeDriver: false,
+          }),
+          Animated.timing(jumpAnim, {
+            toValue: 0,
+            duration: 100,
+            easing: Easing.in(Easing.quad),
+            useNativeDriver: false,
+          }),
+        ]),
+      ]).start();
+    }
+  }, [safeX, safeY, isCaptured]);
 
-  // Animate bobbing when it's movable
   useEffect(() => {
     if (highlight) {
       Animated.loop(
@@ -109,7 +140,9 @@ export default function Pawn({
       style={{
         position: "absolute",
         transform: [{ translateX }, { translateY }],
-        zIndex: highlight ? 20 : 10,
+        zIndex: highlight ? 100 : 10,
+        elevation: highlight ? 100 : 10,
+        pointerEvents: highlight ? "auto" : "none",
       }}
     >
       <Pressable onPress={onPress} style={styles.hitbox}>
@@ -149,10 +182,10 @@ export default function Pawn({
 
 const styles = StyleSheet.create({
   hitbox: {
-    width: 30,
-    height: 30,
-    marginLeft: -15,
-    marginTop: -15,
+    width: 24,
+    height: 24,
+    marginLeft: -12,
+    marginTop: -12,
     justifyContent: "center",
     alignItems: "center",
   },

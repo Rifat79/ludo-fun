@@ -38,16 +38,22 @@ export default function LudoBoard({ size }: { size: number }) {
   const pawns = useGameStore((s) => s.pawns);
   const movablePawns = useGameStore((s) => s.movablePawns);
   const movePawn = useGameStore((s) => s.movePawn);
+  const capturedPawnId = useGameStore((s) => s.capturedPawnId);
 
   const safeSize = size || 300;
   const scale = safeSize / 360;
 
   return (
     <View style={{ width: safeSize, height: safeSize }}>
-      <Svg width={safeSize} height={safeSize} viewBox='0 0 360 360'>
-        {/* --- BASE BACKGROUND GRID --- */}
+      {/* Added pointerEvents="none" so the SVG never blocks pawn clicks */}
+      <Svg
+        width={safeSize}
+        height={safeSize}
+        viewBox='0 0 360 360'
+        pointerEvents='none'
+      >
+        {/* ... (All your SVG drawing code remains exactly the same) ... */}
         <Rect x='0' y='0' width='360' height='360' fill='#f0f0f0' />
-        {/* --- HOME AREAS (6x6 Corners) --- */}
         <Rect x='0' y='0' width={6 * CELL} height={6 * CELL} fill='#34A853' />
         <Rect
           x={9 * CELL}
@@ -70,7 +76,6 @@ export default function LudoBoard({ size }: { size: number }) {
           height={6 * CELL}
           fill='#EA4335'
         />
-        {/* --- MAIN PATHS (White Cross) --- */}
         <Rect
           x='0'
           y={6 * CELL}
@@ -85,7 +90,6 @@ export default function LudoBoard({ size }: { size: number }) {
           height={15 * CELL}
           fill='#FFFFFF'
         />
-        {/* --- COLORED START SQUARES ON PATH --- */}
         <Rect
           x={1 * CELL}
           y={6 * CELL}
@@ -114,7 +118,6 @@ export default function LudoBoard({ size }: { size: number }) {
           height={CELL}
           fill='#EA4335'
         />
-        {/* --- COLORED HOME STRETCH PATHS --- */}
         <Rect
           x={1 * CELL}
           y={7 * CELL}
@@ -143,7 +146,6 @@ export default function LudoBoard({ size }: { size: number }) {
           height={5 * CELL}
           fill='#EA4335'
         />
-        {/* --- CENTER TRIANGLES (Final Spot) --- */}
         <Polygon
           points={`${6 * CELL},${6 * CELL} ${180},${180} ${6 * CELL},${9 * CELL}`}
           fill='#34A853'
@@ -160,7 +162,7 @@ export default function LudoBoard({ size }: { size: number }) {
           points={`${6 * CELL},${9 * CELL} ${180},${180} ${9 * CELL},${9 * CELL}`}
           fill='#EA4335'
         />
-        {/* --- GRID LINES (Clipped to ONLY show on the cross arms, NOT the center) --- */}
+
         <Defs>
           <ClipPath id='crossArmsOnly'>
             <Rect x='0' y={6 * CELL} width={6 * CELL} height={3 * CELL} />
@@ -179,6 +181,7 @@ export default function LudoBoard({ size }: { size: number }) {
             />
           </ClipPath>
         </Defs>
+
         <G
           clipPath='url(#crossArmsOnly)'
           stroke='rgba(0,0,0,0.1)'
@@ -191,43 +194,38 @@ export default function LudoBoard({ size }: { size: number }) {
             <Rect key={`h${i}`} x='0' y={i * CELL} width='360' height='1' />
           ))}
         </G>
-        {/* --- HOME CIRCLES (White circles inside corners) --- */}
+
         <G fill='#FFFFFF' stroke='rgba(0,0,0,0.1)' strokeWidth='2'>
-          {/* Green */}
           <Circle cx={1.5 * CELL} cy={1.5 * CELL} r={20} />
           <Circle cx={4.5 * CELL} cy={1.5 * CELL} r={20} />
           <Circle cx={1.5 * CELL} cy={4.5 * CELL} r={20} />
           <Circle cx={4.5 * CELL} cy={4.5 * CELL} r={20} />
-          {/* Yellow */}
           <Circle cx={10.5 * CELL} cy={1.5 * CELL} r={20} />
           <Circle cx={13.5 * CELL} cy={1.5 * CELL} r={20} />
           <Circle cx={10.5 * CELL} cy={4.5 * CELL} r={20} />
           <Circle cx={13.5 * CELL} cy={4.5 * CELL} r={20} />
-          {/* Blue */}
           <Circle cx={10.5 * CELL} cy={10.5 * CELL} r={20} />
           <Circle cx={13.5 * CELL} cy={10.5 * CELL} r={20} />
           <Circle cx={10.5 * CELL} cy={13.5 * CELL} r={20} />
           <Circle cx={13.5 * CELL} cy={13.5 * CELL} r={20} />
-          {/* Red */}
           <Circle cx={1.5 * CELL} cy={10.5 * CELL} r={20} />
           <Circle cx={4.5 * CELL} cy={10.5 * CELL} r={20} />
           <Circle cx={1.5 * CELL} cy={13.5 * CELL} r={20} />
           <Circle cx={4.5 * CELL} cy={13.5 * CELL} r={20} />
         </G>
-        {/* --- SAFE SPOTS (Stars) --- */}
-        <Star cx={1.5 * CELL} cy={6.5 * CELL} /> {/* Green Start */}
-        <Star cx={8.5 * CELL} cy={1.5 * CELL} /> {/* Yellow Start */}
-        <Star cx={13.5 * CELL} cy={8.5 * CELL} /> {/* Blue Start */}
-        <Star cx={6.5 * CELL} cy={13.5 * CELL} /> {/* Red Start */}
-        <Star cx={6.5 * CELL} cy={2.5 * CELL} /> {/* Top Arm */}
-        <Star cx={12.5 * CELL} cy={6.5 * CELL} /> {/* Right Arm */}
-        <Star cx={8.5 * CELL} cy={12.5 * CELL} /> {/* Bottom Arm */}
-        <Star cx={2.5 * CELL} cy={8.5 * CELL} /> {/* Left Arm */}
+
+        <Star cx={1.5 * CELL} cy={6.5 * CELL} />
+        <Star cx={8.5 * CELL} cy={1.5 * CELL} />
+        <Star cx={13.5 * CELL} cy={8.5 * CELL} />
+        <Star cx={6.5 * CELL} cy={13.5 * CELL} />
+        <Star cx={6.5 * CELL} cy={2.5 * CELL} />
+        <Star cx={12.5 * CELL} cy={6.5 * CELL} />
+        <Star cx={8.5 * CELL} cy={12.5 * CELL} />
+        <Star cx={2.5 * CELL} cy={8.5 * CELL} />
       </Svg>
 
-      {/* --- PAWNS OVERLAY (With Tight Huddle Offsets) --- */}
+      {/* --- PAWNS OVERLAY --- */}
       {(() => {
-        // 1. Group pawns by their exact coordinate to see if they are stacked
         const coordMap: Record<string, number> = {};
         pawns.forEach((pawn, index) => {
           const coords = getPawnCoords(pawn.color, pawn.position, index % 4);
@@ -237,19 +235,17 @@ export default function LudoBoard({ size }: { size: number }) {
 
         const renderIndexMap: Record<string, number> = {};
 
-        // 2. Map pawns and apply a tight offset if they are sharing a square
         return pawns.map((pawn, index) => {
           const coords = getPawnCoords(pawn.color, pawn.position, index % 4);
           const key = `${coords.x},${coords.y}`;
 
           renderIndexMap[key] = (renderIndexMap[key] || 0) + 1;
-          const stackIndex = renderIndexMap[key] - 1; // 0, 1, 2, 3
+          const stackIndex = renderIndexMap[key] - 1;
 
           let offsetX = 0;
           let offsetY = 0;
           const stackCount = coordMap[key];
 
-          // If 2 or more pawns are on this square, huddle them tightly together
           if (stackCount === 2) {
             if (stackIndex === 0) {
               offsetX = -4;
@@ -295,6 +291,7 @@ export default function LudoBoard({ size }: { size: number }) {
               targetY={safeY}
               color={pawn.color}
               highlight={movablePawns.includes(pawn.id)}
+              isCaptured={pawn.id === capturedPawnId} // ADD THIS
               onPress={() => movePawn(pawn.id)}
             />
           );

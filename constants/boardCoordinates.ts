@@ -129,9 +129,11 @@ export const getPawnCoords = (
     return BASE_COORDS[color][pawnIndex];
   } else if (position >= 0 && position <= 51) {
     return PATH_COORDS[(START_INDEX[color] + position) % 52];
-  } else if (position >= 52 && position <= 57) {
+  } else if (position >= 52 && position <= 56) {
+    // Positions 52 to 56 are the 5 home stretch squares
     return HOME_COORDS[color][position - 52];
   } else {
+    // Position 57 (or 58) is the final center finish spot!
     return { x: 180, y: 180 };
   }
 };

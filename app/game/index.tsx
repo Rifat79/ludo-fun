@@ -1,7 +1,14 @@
 import LudoBoard from "@/components/board/LudoBoard";
 import Dice from "@/components/dice/Dice";
 import { useGameStore } from "@/store/gameStore";
-import { Dimensions, StyleSheet, Text, View } from "react-native";
+import {
+  Dimensions,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { Defs, RadialGradient, Rect, Stop, Svg } from "react-native-svg";
 
 const { width, height } = Dimensions.get("window");
@@ -18,19 +25,17 @@ export default function GameScreen() {
   const currentPlayerIndex = useGameStore((s) => s.currentPlayerIndex);
   const message = useGameStore((s) => s.message);
   const isRolling = useGameStore((s) => s.isRolling);
+  const isMoving = useGameStore((s) => s.isMoving);
+  const winner = useGameStore((s) => s.winner);
+  const resetGame = useGameStore((s) => s.resetGame);
 
-  // Inside app/game/index.tsx
   const players = [
-    { id: 1, name: "Player 1", color: "red", align: "left" }, // Bottom-Left
-    { id: 2, name: "Player 2", color: "green", align: "left" }, // Top-Left
-    { id: 3, name: "Player 3", color: "yellow", align: "right" }, // Top-Right
-    { id: 4, name: "Player 4", color: "blue", align: "right" }, // Bottom-Right
+    { id: 1, name: "Player 1", color: "red", align: "left" },
+    { id: 2, name: "Player 2", color: "green", align: "left" },
+    { id: 3, name: "Player 3", color: "yellow", align: "right" },
+    { id: 4, name: "Player 4", color: "blue", align: "right" },
   ];
 
-  // Make sure the render order in your JSX is:
-  // Top Row: renderPlayer(2) & renderPlayer(3)
-  // Bottom Row: renderPlayer(1) & renderPlayer(4)
-  // Match player array to Ludo King corners
   const renderPlayer = (playerId: number) => {
     const player = players.find((p) => p.id === playerId)!;
     const isActive = currentPlayerIndex === playerId - 1;
@@ -42,10 +47,16 @@ export default function GameScreen() {
           style={[
             styles.playerCard,
             {
-              borderColor: hexColor,
+              borderColor: isActive ? hexColor : "rgba(255,255,255,0.2)",
               backgroundColor: isActive
                 ? `${hexColor}33`
-                : "rgba(255,255,255,0.1)",
+                : "rgba(255,255,255,0.05)",
+              // ACTIVE PLAYER GLOW
+              shadowColor: isActive ? hexColor : "#000",
+              shadowOpacity: isActive ? 0.9 : 0.3,
+              shadowRadius: isActive ? 15 : 4,
+              elevation: isActive ? 15 : 5,
+              transform: [{ scale: isActive ? 1.05 : 1 }],
             },
           ]}
         >
@@ -57,7 +68,7 @@ export default function GameScreen() {
           </Text>
         </View>
         <View style={styles.diceSpacing} />
-        <Dice color={hexColor} isActive={isActive && !isRolling} />
+        <Dice color={hexColor} isActive={isActive && !isRolling && !isMoving} />
       </View>
     );
   };
@@ -78,26 +89,58 @@ export default function GameScreen() {
       </View>
 
       <View style={styles.contentContainer}>
-        {/* Top Message */}
         <Text style={styles.messageText}>{message}</Text>
 
-        {/* Top Row: Player 2 & Player 3 */}
         <View style={styles.row}>
           {renderPlayer(2)}
           {renderPlayer(3)}
         </View>
 
-        {/* Middle: The Board */}
         <View style={styles.boardWrapper}>
           <LudoBoard size={BOARD_SIZE} />
         </View>
 
-        {/* Bottom Row: Player 1 & Player 4 */}
         <View style={styles.row}>
           {renderPlayer(1)}
           {renderPlayer(4)}
         </View>
       </View>
+
+      {/* GAME OVER MODAL */}
+      <Modal
+        animationType='slide'
+        transparent={true}
+        visible={winner !== null}
+        onRequestClose={resetGame}
+      >
+        <View style={styles.modalOverlay}>
+          <View
+            style={[
+              styles.modalView,
+              { borderColor: winner ? colorMap[winner] : "#fff" },
+            ]}
+          >
+            <Text style={styles.trophyEmoji}>🏆</Text>
+            <Text
+              style={[
+                styles.winnerText,
+                { color: winner ? colorMap[winner] : "#fff" },
+              ]}
+            >
+              {winner ? `${winner.toUpperCase()} WINS!` : ""}
+            </Text>
+            <TouchableOpacity
+              style={[
+                styles.playAgainButton,
+                { backgroundColor: winner ? colorMap[winner] : "#fff" },
+              ]}
+              onPress={resetGame}
+            >
+              <Text style={styles.playAgainText}>Play Again</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -118,7 +161,12 @@ const styles = StyleSheet.create({
     height: 70,
   },
   rowReverse: { flexDirection: "row-reverse", alignItems: "center" },
-  boardWrapper: { flex: 1, justifyContent: "center", alignItems: "center" },
+  boardWrapper: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 2,
+  },
   playerCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -126,11 +174,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 30,
     borderWidth: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
   },
   avatar: {
     width: 30,
@@ -149,5 +192,45 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: 10,
     textTransform: "capitalize",
+  },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.8)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalView: {
+    width: "80%",
+    backgroundColor: "#1a1a2e",
+    borderRadius: 20,
+    padding: 30,
+    alignItems: "center",
+    borderWidth: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 20,
+  },
+  trophyEmoji: {
+    fontSize: 60,
+    marginBottom: 10,
+  },
+  winnerText: {
+    fontSize: 28,
+    fontWeight: "bold",
+    marginBottom: 20,
+  },
+  playAgainButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 25,
+  },
+  playAgainText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "bold",
   },
 });

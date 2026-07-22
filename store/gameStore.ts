@@ -1,4 +1,5 @@
 import { Pawn, PlayerColor } from "@/app/game/models/Pawn";
+import { playSound } from "@/utils/SoundManager";
 import { create } from "zustand";
 
 const COLORS: PlayerColor[] = ["red", "green", "yellow", "blue"];
@@ -7,17 +8,12 @@ const createInitialPawns = (): Pawn[] => {
   const pawns: Pawn[] = [];
   COLORS.forEach((color) => {
     for (let i = 0; i < 4; i++) {
-      pawns.push({
-        id: `${color}-${i}`,
-        color,
-        position: -1, // All start in base
-      });
+      pawns.push({ id: `${color}-${i}`, color, position: -1 });
     }
   });
   return pawns;
 };
 
-// The 8 absolute path positions that are safe from captures
 const SAFE_SQUARES = [0, 8, 13, 21, 26, 34, 39, 47];
 
 interface GameState {
@@ -28,6 +24,9 @@ interface GameState {
   isMoving: boolean;
   movablePawns: string[];
   message: string;
+  consecutiveSixes: number;
+  capturedPawnId: string | null;
+  winner: PlayerColor | null; // NEW: Tracks who won the game
 
   rollDice: () => void;
   movePawn: (pawnId: string) => void;
@@ -36,29 +35,60 @@ interface GameState {
 
 export const useGameStore = create<GameState>((set, get) => ({
   pawns: createInitialPawns(),
-  currentPlayerIndex: 0, // 0 = Red, 1 = Green, 2 = Yellow, 3 = Blue
+  currentPlayerIndex: 0,
   dice: 0,
   isRolling: false,
   isMoving: false,
   movablePawns: [],
   message: "Red's Turn",
+  consecutiveSixes: 0,
+  capturedPawnId: null,
+  winner: null,
 
   rollDice: () => {
-    const { isRolling, isMoving, currentPlayerIndex, pawns } = get();
-    if (isRolling || isMoving) return;
+    const {
+      isRolling,
+      isMoving,
+      currentPlayerIndex,
+      pawns,
+      consecutiveSixes,
+      winner,
+    } = get();
+    // Block rolling if game is over or currently animating
+    if (isRolling || isMoving || winner) return;
 
     set({ isRolling: true, movablePawns: [], message: "Rolling..." });
+    playSound("dice");
 
     setTimeout(() => {
       const newDice = Math.floor(Math.random() * 6) + 1;
       const currentColor = COLORS[currentPlayerIndex];
+      let newConsecutiveSixes = consecutiveSixes;
+
+      if (newDice === 6) {
+        newConsecutiveSixes++;
+        if (newConsecutiveSixes === 3) {
+          set({
+            dice: newDice,
+            isRolling: false,
+            consecutiveSixes: 0,
+            message: `${currentColor} rolled three 6s! Turn forfeited.`,
+            currentPlayerIndex: (currentPlayerIndex + 1) % 4,
+          });
+          setTimeout(() => {
+            set({ message: `${COLORS[get().currentPlayerIndex]}'s Turn` });
+          }, 1500);
+          return;
+        }
+      } else {
+        newConsecutiveSixes = 0;
+      }
 
       const movable = pawns
         .filter((p) => p.color === currentColor)
         .filter((p) => {
-          if (p.position === 58) return false; // Already finished
-          if (p.position === -1) return newDice === 6; // Need a 6 to leave base
-          // Check if move exceeds the home stretch (57)
+          if (p.position === 57) return false; // Changed to 57 (finished)
+          if (p.position === -1) return newDice === 6;
           if (p.position >= 52 && p.position + newDice > 57) return false;
           return true;
         })
@@ -66,7 +96,6 @@ export const useGameStore = create<GameState>((set, get) => ({
 
       if (movable.length === 0) {
         let reason = "No valid moves!";
-        // Check if the reason was overshooting the center
         const hasPawnsInHomeStretch = pawns.some(
           (p) =>
             p.color === currentColor && p.position >= 52 && p.position < 57,
@@ -77,6 +106,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         set({
           dice: newDice,
           isRolling: false,
+          consecutiveSixes: newConsecutiveSixes,
           message: `${currentColor} ${reason} Turn skipped.`,
           currentPlayerIndex: (currentPlayerIndex + 1) % 4,
         });
@@ -87,6 +117,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         set({
           dice: newDice,
           isRolling: false,
+          consecutiveSixes: newConsecutiveSixes,
           movablePawns: movable,
           message: `Select a pawn to move ${newDice} steps!`,
         });
@@ -95,8 +126,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   movePawn: (pawnId: string) => {
-    const { pawns, dice, currentPlayerIndex, movablePawns } = get();
-    if (!movablePawns.includes(pawnId)) return;
+    const { pawns, dice, currentPlayerIndex, movablePawns, winner } = get();
+    if (!movablePawns.includes(pawnId) || winner) return;
 
     set({ movablePawns: [], isMoving: true, message: "Moving..." });
 
@@ -112,10 +143,11 @@ export const useGameStore = create<GameState>((set, get) => ({
 
       if (currentPawn.position === -1) {
         newPosition = 0;
-        stepsLeft = 0; // Entering the board consumes the whole turn
+        stepsLeft = 0;
       } else if (currentPawn.position < 57) {
         newPosition = currentPawn.position + 1;
         stepsLeft--;
+        playSound("move");
       } else {
         stepsLeft = 0;
       }
@@ -127,10 +159,10 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (stepsLeft > 0) {
         setTimeout(performStep, 200);
       } else {
-        // Finished moving! Check for captures...
         let captureMessage = "";
+        let capturedId = null;
 
-        // Only allow captures on the main 52-path, NOT in the home stretch (52+)
+        // Check captures
         if (newPosition < 52 && !SAFE_SQUARES.includes(newPosition)) {
           const startIdxMap: Record<PlayerColor, number> = {
             red: 39,
@@ -148,16 +180,32 @@ export const useGameStore = create<GameState>((set, get) => ({
             ) {
               const theirAbsolutePos = (startIdxMap[p.color] + p.position) % 52;
               if (theirAbsolutePos === myAbsolutePos) {
-                captureMessage = " Capture!"; // Will append to message
-                return { ...p, position: -1 }; // Send back to base
+                captureMessage = " Capture!";
+                capturedId = p.id;
+                playSound("capture");
+                return { ...p, position: -1 };
               }
             }
             return p;
           });
 
           if (captureMessage) {
-            set({ pawns: capturedPawns });
+            set({ pawns: capturedPawns, capturedPawnId: capturedId });
           }
+        }
+
+        // CHECK WIN CONDITION
+        const allHome = get()
+          .pawns.filter((p) => p.color === currentColor)
+          .every((p) => p.position === 57);
+
+        if (allHome) {
+          set({
+            isMoving: false,
+            winner: currentColor,
+            message: `${currentColor} Wins!`,
+          });
+          return; // Stop turn progression
         }
 
         let extraTurn = false;
@@ -173,6 +221,10 @@ export const useGameStore = create<GameState>((set, get) => ({
           currentPlayerIndex: nextPlayer,
           message: `${COLORS[nextPlayer]}'s Turn${captureMessage}`,
         });
+
+        if (capturedId) {
+          setTimeout(() => set({ capturedPawnId: null }), 1000);
+        }
       }
     };
 
@@ -188,6 +240,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       isMoving: false,
       movablePawns: [],
       message: "Red's Turn",
+      consecutiveSixes: 0,
+      capturedPawnId: null,
+      winner: null,
     });
   },
 }));
