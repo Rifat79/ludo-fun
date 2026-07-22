@@ -2,11 +2,25 @@ import { Pawn, PlayerColor } from "@/app/game/models/Pawn";
 import { playSound } from "@/utils/SoundManager";
 import { create } from "zustand";
 
-const COLORS: PlayerColor[] = ["red", "green", "yellow", "blue"];
+const ALL_COLORS: PlayerColor[] = ["red", "green", "yellow", "blue"];
 
-const createInitialPawns = (): Pawn[] => {
+// Team mapping: Red+Yellow vs Green+Blue
+const TEAMS: Record<PlayerColor, PlayerColor> = {
+  red: "yellow",
+  yellow: "red",
+  green: "blue",
+  blue: "green",
+};
+
+const getColorsForPlayers = (num: number): PlayerColor[] => {
+  if (num === 2) return ["red", "yellow"];
+  if (num === 3) return ["red", "yellow", "green"];
+  return ALL_COLORS;
+};
+
+const createInitialPawns = (colors: PlayerColor[]): Pawn[] => {
   const pawns: Pawn[] = [];
-  COLORS.forEach((color) => {
+  colors.forEach((color) => {
     for (let i = 0; i < 4; i++) {
       pawns.push({ id: `${color}-${i}`, color, position: -1 });
     }
@@ -17,6 +31,9 @@ const createInitialPawns = (): Pawn[] => {
 const SAFE_SQUARES = [0, 8, 13, 21, 26, 34, 39, 47];
 
 interface GameState {
+  numPlayers: number;
+  mode: "classic" | "team";
+  activeColors: PlayerColor[];
   pawns: Pawn[];
   currentPlayerIndex: number;
   dice: number;
@@ -26,15 +43,19 @@ interface GameState {
   message: string;
   consecutiveSixes: number;
   capturedPawnId: string | null;
-  winner: PlayerColor | null; // NEW: Tracks who won the game
+  winner: PlayerColor | null; // In team mode, this stores the winning team color
 
+  initGame: (numPlayers: number, mode: "classic" | "team") => void;
   rollDice: () => void;
   movePawn: (pawnId: string) => void;
   resetGame: () => void;
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
-  pawns: createInitialPawns(),
+  numPlayers: 4,
+  mode: "classic",
+  activeColors: ALL_COLORS,
+  pawns: createInitialPawns(ALL_COLORS),
   currentPlayerIndex: 0,
   dice: 0,
   isRolling: false,
@@ -45,6 +66,25 @@ export const useGameStore = create<GameState>((set, get) => ({
   capturedPawnId: null,
   winner: null,
 
+  initGame: (numPlayers: number, mode: "classic" | "team") => {
+    const colors = getColorsForPlayers(numPlayers);
+    set({
+      numPlayers,
+      mode,
+      activeColors: colors,
+      pawns: createInitialPawns(colors),
+      currentPlayerIndex: 0,
+      dice: 0,
+      isRolling: false,
+      isMoving: false,
+      movablePawns: [],
+      message: `${colors[0]}'s Turn`,
+      consecutiveSixes: 0,
+      capturedPawnId: null,
+      winner: null,
+    });
+  },
+
   rollDice: () => {
     const {
       isRolling,
@@ -53,8 +93,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       pawns,
       consecutiveSixes,
       winner,
+      activeColors,
+      mode,
     } = get();
-    // Block rolling if game is over or currently animating
     if (isRolling || isMoving || winner) return;
 
     set({ isRolling: true, movablePawns: [], message: "Rolling..." });
@@ -62,7 +103,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     setTimeout(() => {
       const newDice = Math.floor(Math.random() * 6) + 1;
-      const currentColor = COLORS[currentPlayerIndex];
+      const currentColor = activeColors[currentPlayerIndex];
       let newConsecutiveSixes = consecutiveSixes;
 
       if (newDice === 6) {
@@ -73,26 +114,40 @@ export const useGameStore = create<GameState>((set, get) => ({
             isRolling: false,
             consecutiveSixes: 0,
             message: `${currentColor} rolled three 6s! Turn forfeited.`,
-            currentPlayerIndex: (currentPlayerIndex + 1) % 4,
+            currentPlayerIndex: (currentPlayerIndex + 1) % activeColors.length,
           });
-          setTimeout(() => {
-            set({ message: `${COLORS[get().currentPlayerIndex]}'s Turn` });
-          }, 1500);
+          setTimeout(
+            () =>
+              set({
+                message: `${get().activeColors[get().currentPlayerIndex]}'s Turn`,
+              }),
+            1500,
+          );
           return;
         }
       } else {
         newConsecutiveSixes = 0;
       }
 
-      const movable = pawns
-        .filter((p) => p.color === currentColor)
-        .filter((p) => {
-          if (p.position === 57) return false; // Changed to 57 (finished)
-          if (p.position === -1) return newDice === 6;
-          if (p.position >= 52 && p.position + newDice > 57) return false;
-          return true;
-        })
-        .map((p) => p.id);
+      // Helper to find movable pawns for a specific color
+      const findMoves = (color: PlayerColor) =>
+        pawns
+          .filter((p) => p.color === color)
+          .filter((p) => {
+            if (p.position === 57) return false;
+            if (p.position === -1) return newDice === 6;
+            if (p.position >= 52 && p.position + newDice > 57) return false;
+            return true;
+          })
+          .map((p) => p.id);
+
+      // 1. Check own pawns
+      let movable = findMoves(currentColor);
+
+      // 2. TEAM MODE: If no own moves, check teammate's pawns
+      if (mode === "team" && movable.length === 0) {
+        movable = findMoves(TEAMS[currentColor]);
+      }
 
       if (movable.length === 0) {
         let reason = "No valid moves!";
@@ -108,11 +163,15 @@ export const useGameStore = create<GameState>((set, get) => ({
           isRolling: false,
           consecutiveSixes: newConsecutiveSixes,
           message: `${currentColor} ${reason} Turn skipped.`,
-          currentPlayerIndex: (currentPlayerIndex + 1) % 4,
+          currentPlayerIndex: (currentPlayerIndex + 1) % activeColors.length,
         });
-        setTimeout(() => {
-          set({ message: `${COLORS[get().currentPlayerIndex]}'s Turn` });
-        }, 1500);
+        setTimeout(
+          () =>
+            set({
+              message: `${get().activeColors[get().currentPlayerIndex]}'s Turn`,
+            }),
+          1500,
+        );
       } else {
         set({
           dice: newDice,
@@ -126,14 +185,22 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   movePawn: (pawnId: string) => {
-    const { pawns, dice, currentPlayerIndex, movablePawns, winner } = get();
+    const {
+      pawns,
+      dice,
+      currentPlayerIndex,
+      movablePawns,
+      winner,
+      activeColors,
+      mode,
+    } = get();
     if (!movablePawns.includes(pawnId) || winner) return;
 
     set({ movablePawns: [], isMoving: true, message: "Moving..." });
 
     const pawnIndex = pawns.findIndex((p) => p.id === pawnId);
     let stepsLeft = dice;
-    const currentColor = COLORS[currentPlayerIndex];
+    const currentColor = activeColors[currentPlayerIndex]; // The player who rolled
 
     const performStep = () => {
       const currentPawns = get().pawns;
@@ -162,7 +229,9 @@ export const useGameStore = create<GameState>((set, get) => ({
         let captureMessage = "";
         let capturedId = null;
 
-        // Check captures
+        // Captures use the moving pawn's color, NOT the roller's color
+        const movingPawnColor = currentPawn.color;
+
         if (newPosition < 52 && !SAFE_SQUARES.includes(newPosition)) {
           const startIdxMap: Record<PlayerColor, number> = {
             red: 39,
@@ -170,11 +239,16 @@ export const useGameStore = create<GameState>((set, get) => ({
             yellow: 13,
             blue: 26,
           };
-          const myAbsolutePos = (startIdxMap[currentColor] + newPosition) % 52;
+          const myAbsolutePos =
+            (startIdxMap[movingPawnColor] + newPosition) % 52;
 
           const capturedPawns = newPawns.map((p) => {
+            // In team mode, you CANNOT capture your own teammate
+            const isTeammate =
+              mode === "team" && p.color === TEAMS[movingPawnColor];
             if (
-              p.color !== currentColor &&
+              p.color !== movingPawnColor &&
+              !isTeammate &&
               p.position >= 0 &&
               p.position < 52
             ) {
@@ -195,17 +269,29 @@ export const useGameStore = create<GameState>((set, get) => ({
         }
 
         // CHECK WIN CONDITION
-        const allHome = get()
-          .pawns.filter((p) => p.color === currentColor)
-          .every((p) => p.position === 57);
+        let isWin = false;
+        if (mode === "team") {
+          // Team wins if ALL 8 pawns (current + teammate) are home
+          isWin = get()
+            .pawns.filter(
+              (p) =>
+                p.color === currentColor || p.color === TEAMS[currentColor],
+            )
+            .every((p) => p.position === 57);
+        } else {
+          // Classic win if all 4 of your pawns are home
+          isWin = get()
+            .pawns.filter((p) => p.color === currentColor)
+            .every((p) => p.position === 57);
+        }
 
-        if (allHome) {
+        if (isWin) {
           set({
             isMoving: false,
             winner: currentColor,
             message: `${currentColor} Wins!`,
           });
-          return; // Stop turn progression
+          return;
         }
 
         let extraTurn = false;
@@ -214,12 +300,12 @@ export const useGameStore = create<GameState>((set, get) => ({
 
         const nextPlayer = extraTurn
           ? currentPlayerIndex
-          : (currentPlayerIndex + 1) % 4;
+          : (currentPlayerIndex + 1) % activeColors.length;
 
         set({
           isMoving: false,
           currentPlayerIndex: nextPlayer,
-          message: `${COLORS[nextPlayer]}'s Turn${captureMessage}`,
+          message: `${activeColors[nextPlayer]}'s Turn${captureMessage}`,
         });
 
         if (capturedId) {
@@ -232,14 +318,15 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   resetGame: () => {
+    const { activeColors } = get();
     set({
-      pawns: createInitialPawns(),
+      pawns: createInitialPawns(activeColors),
       currentPlayerIndex: 0,
       dice: 0,
       isRolling: false,
       isMoving: false,
       movablePawns: [],
-      message: "Red's Turn",
+      message: `${activeColors[0]}'s Turn`,
       consecutiveSixes: 0,
       capturedPawnId: null,
       winner: null,

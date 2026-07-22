@@ -1,6 +1,8 @@
 import LudoBoard from "@/components/board/LudoBoard";
 import Dice from "@/components/dice/Dice";
 import { useGameStore } from "@/store/gameStore";
+import { useLocalSearchParams } from "expo-router";
+import { useEffect } from "react";
 import {
   Dimensions,
   Modal,
@@ -22,27 +24,48 @@ const colorMap: Record<string, string> = {
 };
 
 export default function GameScreen() {
+  const params = useLocalSearchParams<{ players: string; mode: string }>();
+  const initGame = useGameStore((s) => s.initGame);
+
   const currentPlayerIndex = useGameStore((s) => s.currentPlayerIndex);
   const message = useGameStore((s) => s.message);
   const isRolling = useGameStore((s) => s.isRolling);
   const isMoving = useGameStore((s) => s.isMoving);
   const winner = useGameStore((s) => s.winner);
   const resetGame = useGameStore((s) => s.resetGame);
+  const activeColors = useGameStore((s) => s.activeColors);
 
-  const players = [
-    { id: 1, name: "Player 1", color: "red", align: "left" },
-    { id: 2, name: "Player 2", color: "green", align: "left" },
-    { id: 3, name: "Player 3", color: "yellow", align: "right" },
-    { id: 4, name: "Player 4", color: "blue", align: "right" },
+  useEffect(() => {
+    const numPlayers = parseInt(params.players || "4", 10);
+    const mode = (params.mode === "team" ? "team" : "classic") as
+      | "team"
+      | "classic";
+    initGame(numPlayers, mode);
+  }, []);
+
+  const allPlayers = [
+    { id: 1, name: "Player 1", color: "red", corner: "BL" },
+    { id: 2, name: "Player 2", color: "green", corner: "TL" },
+    { id: 3, name: "Player 3", color: "yellow", corner: "TR" },
+    { id: 4, name: "Player 4", color: "blue", corner: "BR" },
   ];
 
   const renderPlayer = (playerId: number) => {
-    const player = players.find((p) => p.id === playerId)!;
-    const isActive = currentPlayerIndex === playerId - 1;
+    const player = allPlayers.find((p) => p.id === playerId);
+    if (!player || !activeColors.includes(player.color as any)) return null;
+
+    const isActive = currentPlayerIndex === activeColors.indexOf(player.color);
     const hexColor = colorMap[player.color];
 
     return (
-      <View style={player.align === "right" ? styles.rowReverse : styles.row}>
+      <View
+        key={player.id}
+        style={
+          player.corner === "TR" || player.corner === "BR"
+            ? styles.rowReverse
+            : styles.row
+        }
+      >
         <View
           style={[
             styles.playerCard,
@@ -51,7 +74,6 @@ export default function GameScreen() {
               backgroundColor: isActive
                 ? `${hexColor}33`
                 : "rgba(255,255,255,0.05)",
-              // ACTIVE PLAYER GLOW
               shadowColor: isActive ? hexColor : "#000",
               shadowOpacity: isActive ? 0.9 : 0.3,
               shadowRadius: isActive ? 15 : 4,
@@ -106,7 +128,6 @@ export default function GameScreen() {
         </View>
       </View>
 
-      {/* GAME OVER MODAL */}
       <Modal
         animationType='slide'
         transparent={true}
@@ -193,8 +214,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     textTransform: "capitalize",
   },
-
-  // Modal Styles
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.8)",
@@ -214,23 +233,12 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 20,
   },
-  trophyEmoji: {
-    fontSize: 60,
-    marginBottom: 10,
-  },
-  winnerText: {
-    fontSize: 28,
-    fontWeight: "bold",
-    marginBottom: 20,
-  },
+  trophyEmoji: { fontSize: 60, marginBottom: 10 },
+  winnerText: { fontSize: 28, fontWeight: "bold", marginBottom: 20 },
   playAgainButton: {
     paddingVertical: 12,
     paddingHorizontal: 30,
     borderRadius: 25,
   },
-  playAgainText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
-  },
+  playAgainText: { color: "#fff", fontSize: 18, fontWeight: "bold" },
 });
